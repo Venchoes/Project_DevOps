@@ -7,3 +7,6 @@ function subtrai(a, b) {
 }
 
 module.exports = { soma, subtrai };
+
+
+let variavel;
