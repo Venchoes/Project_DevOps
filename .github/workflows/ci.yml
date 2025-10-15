@@ -54,7 +54,9 @@ jobs:
         run: |
           echo "DEPLOY_URL=${{ env.SITE_URL }}" >> $GITHUB_ENV
 
-
+  # -------------------------
+  # DAST: OWASP ZAP (atualizado)
+  # -------------------------
   zap-scan:
     needs: [ build-and-test ]
     runs-on: ubuntu-latest
@@ -63,9 +65,16 @@ jobs:
         uses: actions/checkout@v4
 
       - name: OWASP ZAP - Baseline scan (DAST)
-        uses: zaproxy/action-baseline@v0.4.0
+        uses: zaproxy/action-baseline@v0.10.0  # ✅ versão nova e funcional
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}      
-          target: ${{ env.SITE_URL }}             
-          docker_name: 'owasp/zap2docker-weekly'  
-          fail_action: false                      
+          token: ${{ secrets.GITHUB_TOKEN }}
+          target: ${{ env.SITE_URL }}
+          fail_action: false                   # não interrompe o job em caso de alertas
+
+      # (Opcional) gerar e salvar o relatório HTML
+      - name: Upload relatório do ZAP
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: report_html.html
