@@ -3,6 +3,9 @@ name: CI com Jest, Semgrep (SAST) e Deploy na Vercel
 on:
   push:
     branches: [ main ]
+permissions:
+  contents: write
+  issues: write
 
 env:
   SITE_URL: 'https://project-dev-ops-rouge.vercel.app/'
