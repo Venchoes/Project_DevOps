@@ -1,0 +1,67 @@
+name: CI + SAST + Deploy + (opcional DAST)
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  # você pode usar esta URL fixa para DAST ou logs, se quiser
+  SITE_URL: 'https://project-dev-ops-rouge.vercel.app'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    outputs:
+      deployment-url: ${{ steps.vercel.outputs.url || '' }}
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Rodar testes (Jest ou equivalente)
+        run: npm test
+
+      - name: Executar Semgrep (SAST)
+        uses: docker://semgrep/semgrep:latest
+        with:
+          args: semgrep --config=auto --timeout 300
+
+      - name: Deploy para Vercel
+        id: vercel
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-args: '--prod --confirm'
+          working-directory: './'
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Save deployment URL
+        if: always()
+        run: |
+          # Em muitos casos, a action do Vercel retorna a URL no output
+          echo "DEPLOY_URL=${{ steps.vercel.outputs.url }}" >> $GITHUB_ENV
+          # Fallback (caso não retorne): usa a URL fixa
+          echo "DEPLOY_URL=${{ env.SITE_URL }}" >> $GITHUB_ENV
+
+  zap-scan:
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (contexto)
+        uses: actions/checkout@v4
+
+      - name: OWASP ZAP Baseline Scan (DAST)
+        uses: zaproxy/action-baseline@v0.4.0
+        with:
+          target: ${{ env.SITE_URL }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
